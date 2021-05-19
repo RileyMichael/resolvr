@@ -1,16 +1,21 @@
 package main
 
 import (
-	"fmt"
 	"github.com/RileyMichael/resolvr/internal/resolvr"
-	"log"
+	"go.uber.org/zap"
 )
 
 func main() {
+	// init logger.. for now, just default to dev mode
+	logger, _ := zap.NewDevelopment()
+	zap.ReplaceGlobals(logger)
+	defer logger.Sync()
+
 	config, err := resolvr.LoadConfig()
 
 	if err != nil {
-		log.Fatal("error loading config", err)
+		zap.S().Panic("error loading config", "error", err.Error())
 	}
-	fmt.Println(config)
+
+	resolvr.ServeDns(config)
 }
