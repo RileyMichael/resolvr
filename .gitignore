@@ -1,0 +1,5 @@
+# editor
+.idea/
+
+# etc
+.DS_STORE
