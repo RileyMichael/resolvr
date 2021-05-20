@@ -22,6 +22,9 @@ type Config struct {
 	// server address + port
 	BindAddress string `envconfig:"default=:53"`
 
+	// metrics address + port
+	MetricsAddress string `envconfig:"default=:9091"`
+
 	// dev / prod
 	Env string `envconfig:"default=dev"`
 

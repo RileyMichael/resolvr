@@ -2,6 +2,8 @@ package resolvr
 
 import (
 	"github.com/miekg/dns"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 	"net"
 	"regexp"
@@ -12,6 +14,21 @@ import (
 var ipDashRegex = regexp.MustCompile(`(^|[.-])(((25[0-5]|(2[0-4]|1?[0-9])?[0-9])-){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))($|[.-])`)
 var aRecords map[string]net.IP
 var nsRecords []*dns.NS
+
+var (
+	dnsRequests = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "dns_requests_total",
+		Help: "The total number of DNS requests",
+	})
+	typeAQueries = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "dns_requests_type_a",
+		Help: "The total number of Type A DNS Query requests",
+	})
+	typeNSQueries = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "dns_requests_type_ns",
+		Help: "The total number of Type NS DNS Query requests",
+	})
+)
 
 func ServeDns(config *Config) {
 	initRecords(config)
@@ -58,11 +75,14 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 	reply.RecursionDesired = false
 	reply.RecursionAvailable = false
 
+	dnsRequests.Inc()
+
 	if request.Opcode == dns.OpcodeQuery {
 		switch request.Question[0].Qtype {
 		case dns.TypeA:
 			name := request.Question[0].Name
 			zap.S().Debugf("'A' Query for %s", name)
+			typeAQueries.Inc()
 
 			// TODO: extract these to a single function
 
@@ -86,6 +106,7 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 			}
 		case dns.TypeNS:
 			zap.S().Debugf("'NS' Query")
+			typeNSQueries.Inc()
 			for _, record := range nsRecords {
 				reply.Answer = append(reply.Answer, record)
 			}

@@ -6,3 +6,7 @@ app = "resolvr"
 
   [[services.ports]]
   port = "53"
+
+[metrics]
+port = 9091
+path = "/metrics"
