@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - 'master' # build pushes to master
+    paths-ignore:
+      - 'README.md' # except commits that only contain changes to the readme
+      - 'LICENSE' # or license
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: lint
+        run: test -z "$(gofmt -s -d .)"
+      - name: ensure tidy gomod
+        run: test -z "$(go mod tidy && git status --porcelain go.mod go.sum)"
+      - name: Build & Push
+        uses: docker/build-push-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          tags: ${{ github.sha }}
