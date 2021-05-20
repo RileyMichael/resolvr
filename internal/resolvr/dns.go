@@ -11,6 +11,7 @@ import (
 // TODO: ipv6.?
 var ipDashRegex = regexp.MustCompile(`(^|[.-])(((25[0-5]|(2[0-4]|1?[0-9])?[0-9])-){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))($|[.-])`)
 var aRecords map[string]net.IP
+var nsRecords []*dns.NS
 
 func ServeDns(config *Config) {
 	initRecords(config)
@@ -23,6 +24,7 @@ func ServeDns(config *Config) {
 
 func initRecords(config *Config) {
 	initARecords(config)
+	initNsRecords(config)
 }
 
 func initARecords(config *Config) {
@@ -37,17 +39,28 @@ func initARecords(config *Config) {
 	aRecords[config.Hostname] = net.ParseIP(config.Address)
 }
 
+func initNsRecords(config *Config) {
+	nsRecords = make([]*dns.NS, len(config.Nameserver))
+	for idx, ns := range config.Nameserver {
+		nsRecords[idx] = &dns.NS{
+			Hdr: dns.RR_Header{
+				Name: config.Hostname, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 60 * 60 * 24 * 7,
+			},
+			Ns: ns.Hostname,
+		}
+	}
+}
+
 func handle(w dns.ResponseWriter, request *dns.Msg) {
 	reply := new(dns.Msg)
 	reply.SetReply(request)
+	reply.Authoritative = true
+	reply.RecursionDesired = false
+	reply.RecursionAvailable = false
 
 	if request.Opcode == dns.OpcodeQuery {
 		switch request.Question[0].Qtype {
 		case dns.TypeA:
-			reply.Authoritative = true
-			reply.RecursionDesired = false
-			reply.RecursionAvailable = false
-
 			name := request.Question[0].Name
 			zap.S().Debugf("'A' Query for %s", name)
 
@@ -70,6 +83,10 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60 * 60 * 24 * 7},
 					A:   record,
 				})
+			}
+		case dns.TypeNS:
+			for _, record := range nsRecords {
+				reply.Answer = append(reply.Answer, record)
 			}
 		}
 		w.WriteMsg(reply)
