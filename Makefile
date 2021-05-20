@@ -15,7 +15,7 @@ lint: ## lint
 	@gofmt -s -w ./
 
 docker-run: control/docker-build docker-stop ## run containerized
-	docker run -d -p 127.0.0.1:53:53/udp --name $(TAG) $(TAG)
+	docker run -d -p 127.0.0.1:53:53/udp -p 127.0.0.1:9091:9091/tcp --name $(TAG) $(TAG)
 
 docker-stop: ## stop container
 	-docker rm -f $(TAG)
