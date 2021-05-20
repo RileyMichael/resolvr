@@ -22,6 +22,9 @@ type Config struct {
 	// server address + port
 	BindAddress string `envconfig:"default=:53"`
 
+	// dev / prod
+	Env string `envconfig:"default=dev"`
+
 	// slice of nameservers
 	Nameserver []NameserverConfig `envconfig:"default={ns1.resolvr.io.;127.0.0.1};{ns2.resolvr.io.;127.0.0.1}"`
 }

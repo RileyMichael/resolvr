@@ -85,6 +85,7 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 				})
 			}
 		case dns.TypeNS:
+			zap.S().Debugf("'NS' Query")
 			for _, record := range nsRecords {
 				reply.Answer = append(reply.Answer, record)
 			}
