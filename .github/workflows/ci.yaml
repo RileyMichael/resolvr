@@ -24,6 +24,9 @@ jobs:
         run: test -z "$(gofmt -s -d .)"
       - name: ensure tidy gomod
         run: test -z "$(go mod tidy && git status --porcelain go.mod go.sum)"
+      - name: lowercase repo
+        run: |
+          echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
       - name: Build & Push
         uses: docker/build-push-action@v1
         with:
