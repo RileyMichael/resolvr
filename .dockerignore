@@ -1,0 +1,13 @@
+# Ignore everything
+*
+
+# Allowed
+!/go.*
+!/cmd/**
+!/internal/**
+
+# Ignore unnecessary files inside allowed
+**/*~
+**/*.log
+**/.DS_Store
+**/Thumbs.db

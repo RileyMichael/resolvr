@@ -1,0 +1,8 @@
+app = "resolvr"
+
+[[services]]
+  internal_port = 53
+  protocol = "udp"
+
+  [[services.ports]]
+  port = "53"

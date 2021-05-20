@@ -15,7 +15,7 @@ var aRecords map[string]net.IP
 func ServeDns(config *Config) {
 	initRecords(config)
 	dns.HandleFunc(config.Hostname, handle)
-	server := &dns.Server{Addr: ":53", Net: "udp"}
+	server := &dns.Server{Addr: config.BindAddress, Net: "udp"}
 	if err := server.ListenAndServe(); err != nil {
 		zap.S().Panicw("failed to start server", "error", err.Error())
 	}

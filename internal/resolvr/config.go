@@ -19,6 +19,9 @@ type Config struct {
 	// address for base hostname A record
 	Address string `envconfig:"default=127.0.0.1"`
 
+	// server address + port
+	BindAddress string `envconfig:"default=:53"`
+
 	// slice of nameservers
 	Nameserver []NameserverConfig `envconfig:"default={ns1.resolvr.io.;127.0.0.1};{ns2.resolvr.io.;127.0.0.1}"`
 }
