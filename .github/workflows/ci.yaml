@@ -24,9 +24,10 @@ jobs:
         run: test -z "$(gofmt -s -d .)"
       - name: ensure tidy gomod
         run: test -z "$(go mod tidy && git status --porcelain go.mod go.sum)"
-      - name: lowercase repo
+      - name: set image env vars
         run: |
           echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >>${GITHUB_ENV}
       - name: Build & Push
         uses: docker/build-push-action@v1
         with:
@@ -34,4 +35,4 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ env.REPO }}
-          tags: ${{ github.sha }}
+          tags: ${{ env.SHORT_SHA }}
