@@ -8,14 +8,15 @@ import (
 	"net"
 	"regexp"
 	"strings"
+	"time"
 )
 
-// TODO: ipv6.?
-var ipDashRegex = regexp.MustCompile(`(^|[.-])(((25[0-5]|(2[0-4]|1?[0-9])?[0-9])-){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))($|[.-])`)
-var aRecords map[string]net.IP
-var nsRecords []*dns.NS
-
 var (
+	// TODO: ipv6.?
+	ipDashRegex = regexp.MustCompile(`(^|[.-])(((25[0-5]|(2[0-4]|1?[0-9])?[0-9])-){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))($|[.-])`)
+	aRecords    map[string]net.IP
+	nsRecords   []dns.RR
+	soaRecord   []dns.RR
 	dnsRequests = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "dns_requests_total",
 		Help: "The total number of DNS requests",
@@ -30,6 +31,10 @@ var (
 	})
 )
 
+const (
+	WeekTtl = 60 * 60 * 24 * 7
+)
+
 func ServeDns(config *Config) {
 	initRecords(config)
 	dns.HandleFunc(config.Hostname, handle)
@@ -42,6 +47,7 @@ func ServeDns(config *Config) {
 func initRecords(config *Config) {
 	initARecords(config)
 	initNsRecords(config)
+	initSoaRecord(config)
 }
 
 func initARecords(config *Config) {
@@ -57,14 +63,35 @@ func initARecords(config *Config) {
 }
 
 func initNsRecords(config *Config) {
-	nsRecords = make([]*dns.NS, len(config.Nameserver))
+	header := dns.RR_Header{
+		Name: config.Hostname, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: WeekTtl,
+	}
+	nsRecords = make([]dns.RR, len(config.Nameserver))
 	for idx, ns := range config.Nameserver {
-		nsRecords[idx] = &dns.NS{
+		nsRecords[idx] = &dns.NS{Hdr: header, Ns: ns.Hostname}
+	}
+}
+
+func initSoaRecord(config *Config) {
+	t := time.Now()
+	yyyymmdd := (t.Year() * 10000) + (int(t.Month()) * 100) + (t.Day())
+	serial := uint32(yyyymmdd * 100) // serial / last modification to zone should be everytime app starts
+	soaRecord = []dns.RR{
+		&dns.SOA{
 			Hdr: dns.RR_Header{
-				Name: config.Hostname, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 60 * 60 * 24 * 7,
+				Name:   config.Hostname,
+				Rrtype: dns.TypeSOA,
+				Class:  dns.ClassINET,
+				Ttl:    WeekTtl,
 			},
-			Ns: ns.Hostname,
-		}
+			Ns:      config.Hostname,
+			Mbox:    "admin." + config.Hostname,
+			Serial:  serial,
+			Refresh: 86400,   // 24 hours
+			Retry:   7200,    // 2 hours
+			Expire:  3600000, // 1000 hours
+			Minttl:  172800,  // 2 days
+		},
 	}
 }
 
@@ -78,18 +105,26 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 	dnsRequests.Inc()
 
 	if request.Opcode == dns.OpcodeQuery {
-		switch request.Question[0].Qtype {
+		defer w.WriteMsg(reply)
+
+		if len(request.Question) < 1 {
+			reply.Answer = soaRecord
+			return
+		}
+
+		question := request.Question[0]
+		name := strings.ToLower(question.Name)
+
+		switch question.Qtype {
 		case dns.TypeA:
-			name := request.Question[0].Name
 			zap.S().Debugf("'A' Query for %s", name)
 			typeAQueries.Inc()
 
 			// TODO: extract these to a single function
-
 			// records from config
 			if record, ok := aRecords[name]; ok {
 				reply.Answer = append(reply.Answer, &dns.A{
-					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60},
+					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: WeekTtl},
 					A:   record,
 				})
 			}
@@ -100,17 +135,20 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 				ip := strings.Replace(match, "-", ".", -1)
 				record := net.ParseIP(ip)
 				reply.Answer = append(reply.Answer, &dns.A{
-					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60 * 60 * 24 * 7},
+					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: WeekTtl},
 					A:   record,
 				})
 			}
 		case dns.TypeNS:
-			zap.S().Debugf("'NS' Query")
+			zap.S().Debug("'NS' Query")
 			typeNSQueries.Inc()
-			for _, record := range nsRecords {
-				reply.Answer = append(reply.Answer, record)
-			}
+			reply.Answer = nsRecords
+		case dns.TypeSOA:
+			zap.S().Debug("'SOA' Query")
+			reply.Answer = soaRecord
+		default:
+			zap.S().Debug("Unhandled query type")
+			reply.Answer = soaRecord
 		}
-		w.WriteMsg(reply)
 	}
 }
