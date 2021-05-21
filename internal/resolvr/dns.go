@@ -119,26 +119,10 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 		case dns.TypeA:
 			zap.S().Debugf("'A' Query for %s", name)
 			typeAQueries.Inc()
-
-			// TODO: extract these to a single function
-			// records from config
-			if record, ok := aRecords[name]; ok {
-				reply.Answer = append(reply.Answer, &dns.A{
-					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: WeekTtl},
-					A:   record,
-				})
-			}
-
-			// record from ip contained in name
-			if ipDashRegex.MatchString(name) {
-				match := ipDashRegex.FindStringSubmatch(name)[2]
-				ip := strings.Replace(match, "-", ".", -1)
-				record := net.ParseIP(ip)
-				reply.Answer = append(reply.Answer, &dns.A{
-					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: WeekTtl},
-					A:   record,
-				})
-			}
+			reply.Answer = append(reply.Answer, &dns.A{
+				Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: WeekTtl},
+				A:   ipFromName(name),
+			})
 		case dns.TypeNS:
 			zap.S().Debug("'NS' Query")
 			typeNSQueries.Inc()
@@ -151,4 +135,21 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 			reply.Answer = soaRecord
 		}
 	}
+}
+
+func ipFromName(name string) net.IP {
+	// name:ip matches from config
+	if record, ok := aRecords[name]; ok {
+		return record
+	}
+
+	// ip extracted from name dash format, e.g. 10-10-10-1.rest.of.name
+	if ipDashRegex.MatchString(name) {
+		match := ipDashRegex.FindStringSubmatch(name)[2]
+		ip := strings.Replace(match, "-", ".", -1)
+		return net.ParseIP(ip)
+	}
+
+	// none of the above, just resolve to localhost
+	return net.ParseIP("127.0.0.1")
 }
