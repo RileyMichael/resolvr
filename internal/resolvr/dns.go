@@ -25,9 +25,17 @@ var (
 		Name: "dns_requests_type_a",
 		Help: "The total number of Type A DNS Query requests",
 	})
-	typeNSQueries = promauto.NewCounter(prometheus.CounterOpts{
+	typeNsQueries = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "dns_requests_type_ns",
 		Help: "The total number of Type NS DNS Query requests",
+	})
+	typeSoaQueries = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "dns_requests_type_soa",
+		Help: "The total number of Type SOA DNS Query requests",
+	})
+	unhandledQueries = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "dns_requests_unhandled",
+		Help: "The total number of unhandled DNS Query requests",
 	})
 )
 
@@ -125,13 +133,15 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 			})
 		case dns.TypeNS:
 			zap.S().Debug("'NS' Query")
-			typeNSQueries.Inc()
+			typeNsQueries.Inc()
 			reply.Answer = nsRecords
 		case dns.TypeSOA:
 			zap.S().Debug("'SOA' Query")
+			typeSoaQueries.Inc()
 			reply.Answer = soaRecord
 		default:
 			zap.S().Debug("Unhandled query type")
+			unhandledQueries.Inc()
 			reply.Answer = soaRecord
 		}
 	}
