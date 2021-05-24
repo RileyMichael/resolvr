@@ -122,25 +122,24 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 
 		question := request.Question[0]
 		name := strings.ToLower(question.Name)
-
+		zap.S().Debugw("Attempting to handle query",
+			"type", dns.TypeToString[question.Qtype],
+			"name", question.Name,
+		)
 		switch question.Qtype {
 		case dns.TypeA:
-			zap.S().Debugf("'A' Query for %s", name)
 			typeAQueries.Inc()
 			reply.Answer = append(reply.Answer, &dns.A{
 				Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: WeekTtl},
 				A:   ipFromName(name),
 			})
 		case dns.TypeNS:
-			zap.S().Debug("'NS' Query")
 			typeNsQueries.Inc()
 			reply.Answer = nsRecords
 		case dns.TypeSOA:
-			zap.S().Debug("'SOA' Query")
 			typeSoaQueries.Inc()
 			reply.Answer = soaRecord
 		default:
-			zap.S().Debug("Unhandled query type")
 			unhandledQueries.Inc()
 			reply.Answer = soaRecord
 		}

@@ -1,6 +1,6 @@
 # resolvr
 
-simple wildcard dns server that will extract ip addresses from the hostname and resolve to them
+simple wildcard dns server that will extract ip addresses from the hostname and resolve to them -- no more editing /etc/hosts!
 
 similar to xip.io which appears to have gone offline with the recent basecamp exodus
 
@@ -8,6 +8,9 @@ similar to xip.io which appears to have gone offline with the recent basecamp ex
 # say you have an internal ip 10.10.10.1
 > dig +short 10-10-10-1.resolvr.io
 10.10.10.1
+
+# example use: k8s ingress
+> curl my-app-on-k8s.10-10-10-1.resolvr.io
 ```
 
 ## config
