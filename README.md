@@ -20,9 +20,11 @@ defaults are configured for local dev, however you can override them at runtime 
 
 ```bash
 export RESOLVR_HOSTNAME=your.hostname.
-export RESOLVR_ADDRESS=10.10.10.1
 export RESOLVR_BIND_ADDRESS=0.0.0.0:53
 export RESOLVR_METRICS_ADDRESS=0.0.0.0:9091
 export RESOLVR_ENV=prod
-export RESOLVR_NAMESERVER={ns1.your.hostname.,10.10.10.2},{ns2.your.hostname.,10.10.10.3}
+export RESOLVR_STATIC_TYPE_A_RECORDS={your.hostname.,10.10.10.2},{prod.your.hostname.,10.10.10.3}
+export RESOLVR_STATIC_TYPE_AAAA_RECORDS={your.hostname.,::1}
+export RESOLVR_STATIC_TYPE_CNAME_RECORDS={www.your.hostname.,your.hostname.}
+export RESOLVR_NAMESERVERS={ns1.your.hostname.,10.10.10.2},{ns2.your.hostname.,10.10.10.3}
 ```

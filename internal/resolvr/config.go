@@ -16,9 +16,6 @@ type Config struct {
 	// the base hostname with a trailing dot
 	Hostname string `envconfig:"default=resolvr.io."`
 
-	// address for base hostname A record
-	Address string `envconfig:"default=127.0.0.1"`
-
 	// server address + port
 	BindAddress string `envconfig:"default=:53"`
 
@@ -28,14 +25,21 @@ type Config struct {
 	// dev / prod
 	Env string `envconfig:"default=dev"`
 
-	// slice of nameservers
-	Nameserver []NameserverConfig `envconfig:"default={ns1.resolvr.io.;127.0.0.1};{ns2.resolvr.io.;127.0.0.1}"`
+	// First: Host Second Address
+	StaticTypeARecords []StaticConfig `envconfig:"default={resolvr.io.;127.0.0.1}"`
+
+	// First: Host Second: Address
+	StaticTypeAAAARecords []StaticConfig `envconfig:"default={resolvr.io.;::1}"`
+
+	// First: Alias Second: Canonical
+	StaticTypeCNAMERecords []StaticConfig `envconfig:"default={www.resolvr.io.;resolvr.io.}"`
+
+	// First: Host, Second: Address
+	// NS records will be created for root Hostname to every NS Host, and A records for NS Host -> NS Address
+	Nameservers []StaticConfig `envconfig:"default={ns1.resolvr.io.;127.0.0.1};{ns2.resolvr.io.;127.0.0.1}"`
 }
 
-type NameserverConfig struct {
-	// full hostname for the nameserver with a trailing dot
-	Hostname string
-
-	// ip address for the A record
-	Address string
+type StaticConfig struct {
+	First  string
+	Second string
 }

@@ -1,12 +1,12 @@
-app = "resolvr"
+app = "resolvrdotio"
 
 [[services]]
   internal_port = 53
   protocol = "udp"
 
   [[services.ports]]
-  port = "53"
+    port = "53"
 
 [metrics]
-port = 9091
-path = "/metrics"
+  port = 9091
+  path = "/metrics"
