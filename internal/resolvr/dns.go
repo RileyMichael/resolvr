@@ -34,7 +34,8 @@ var (
 )
 
 const (
-	WeekTtl = 60 * 60 * 24 * 7
+	WeekTtl       = 60 * 60 * 24 * 7
+	FiveMinuteTtl = 60 * 5
 )
 
 func ServeDns(config *Config) {
@@ -142,7 +143,23 @@ func handle(w dns.ResponseWriter, request *dns.Msg) {
 		)
 		switch question.Qtype {
 		case dns.TypeA:
-			if record, ok := staticTypeARecords[name]; ok {
+			if record, ok := staticTypeCNAMERecords[name]; ok {
+				// if we've defined a static cname, resolve the A records for the canonical host
+				reply.Answer = append(reply.Answer, record)
+				m := new(dns.Msg)
+				m.SetQuestion(record.(*dns.CNAME).Target, dns.TypeA)
+				d := new(dns.Client)
+				// todo: specify resolver(s) in config, and this could error
+				response, _, _ := d.Exchange(m, "8.8.8.8:53")
+				for _, a := range response.Answer {
+					if r, ok := a.(*dns.A); ok {
+						reply.Answer = append(reply.Answer, &dns.A{
+							Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: FiveMinuteTtl},
+							A:   r.A,
+						})
+					}
+				}
+			} else if record, ok := staticTypeARecords[name]; ok {
 				reply.Answer = append(reply.Answer, record)
 			} else {
 				typeAQueries.Inc()
